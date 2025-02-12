@@ -11,13 +11,9 @@ program timesteps
     call MPI_Comm_rank(MPI_COMM_WORLD, rank, ierr)
     call MPI_Comm_size(MPI_COMM_WORLD, size, ierr)
 
-    if (rank == 0) then
-        call xios_init_server 
-    else
-        call initialise()
-        call simulate()
-        call finalise()
-    endif 
+    call initialise()
+    call simulate()
+    call finalise()
     
     call MPI_Finalize(ierr)
 
@@ -65,6 +61,7 @@ contains
         ALLOCATE ( a_field(10) )
 
         ! Entering time loop
+        ! Send 96 timesteps (4 days)
         do ts=1,96
             ! do i=1,10
             !     a_field(i) = 10 * ts + i
