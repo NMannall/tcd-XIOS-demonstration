@@ -24,7 +24,12 @@ class TestSamplingOffset(xshared._TestCase):
 
         rootgrp = netCDF4.Dataset(outputfile, 'r')
 
+        # This should be the average field value each day. I.e. (1+2+3+...+24)/24 for day 1
         self.check_dataset(rootgrp['daily_average'], [12.5, 36.5, 60.5, 84.5])
+
+        # These fields start their output at T=24, T=1, T=12, and T=25 respectivly
+        # Output then continues with an output frequency of 1 day (i.e. 24 timesteps)
+        # See main.xml for additional comments and the offset used for each field
         self.check_dataset(rootgrp['T=24 (default)'], [24, 48, 72, 96])
         self.check_dataset(rootgrp['T=1'], [1, 25, 49, 73])
         self.check_dataset(rootgrp['T=12'], [12, 36, 60, 84])
