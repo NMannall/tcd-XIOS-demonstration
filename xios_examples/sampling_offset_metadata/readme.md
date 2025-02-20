@@ -1,4 +1,4 @@
-Sampling Offset - Time Bounds
+Sampling Offset - Metadata
 ------
 
 This example writes the average of a single field over a 24 hour time period to

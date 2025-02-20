@@ -10,13 +10,13 @@ import xios_examples.shared_testing as xshared
 this_path = os.path.realpath(__file__)
 this_dir = os.path.dirname(this_path)
 
-class TestSamplingOffsetTimeBounds(xshared._TestCase):
+class TestSamplingOffsetMetadata(xshared._TestCase):
     test_dir = this_dir
     transient_outputs = ["metadata.nc", "daily_average.nc", "shifted_daily_average.nc"]
     executable = "./timesteps.exe"
     axis_size = 10
 
-    def test_sampling_offset_time_bounds(self):
+    def test_sampling_offset_metadata(self):
         self.run_mpi_xios()
 
         # Generate metadata netCDF file
