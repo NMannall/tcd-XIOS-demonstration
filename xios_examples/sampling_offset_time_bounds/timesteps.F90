@@ -61,7 +61,8 @@ contains
         ALLOCATE ( a_field(10) )
 
         ! Entering time loop
-        do ts=1,96
+        ! Send 108 timesteps (4 1/2 days)
+        do ts=1,108
             ! do i=1,10
             !     a_field(i) = 10 * ts + i
             ! enddo

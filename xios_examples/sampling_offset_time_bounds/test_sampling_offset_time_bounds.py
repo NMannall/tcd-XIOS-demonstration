@@ -1,4 +1,5 @@
-from typing import List
+from pathlib import Path
+import subprocess
 import netCDF4
 import numpy as np
 import numpy.testing as npt
@@ -11,44 +12,52 @@ this_dir = os.path.dirname(this_path)
 
 class TestSamplingOffsetTimeBounds(xshared._TestCase):
     test_dir = this_dir
-    transient_outputs = ["daily_average.nc"]
+    transient_outputs = ["metadata.nc", "daily_average.nc", "shifted_daily_average.nc"]
     executable = "./timesteps.exe"
     axis_size = 10
 
     def test_sampling_offset_time_bounds(self):
         self.run_mpi_xios()
 
-        # Check the expected output file exists
-        outputfile = '{}/{}'.format(self.test_dir, self.transient_outputs[0])
-        self.assertTrue(os.path.exists(outputfile))
-
-        rootgrp = netCDF4.Dataset(outputfile, 'r')
-
-        self.check_dataset(rootgrp['daily_average'], [24.5, 48.5, 72.5])
-
-    def check_dataset(self, dataset: netCDF4.Dataset, expected_values: List[int]):
-        # Read data
-        result = dataset[:]
-
-        # If 'result' has masked values, we want to remove the masked values to
-        # correctly validate the shape of the data
-        if result.mask.any():
-            result = result.compressed()
-            result = np.reshape(result, (-1, self.axis_size))
-
-        # Check dataset has correct number of timesteps and axis size
-        timesteps = len(expected_values)
-        self.assertEqual(result.shape, (timesteps, self.axis_size))
-
-        # Calculate expected value and diff
-        expected = np.repeat([expected_values], self.axis_size, axis=0).T
-        diff = result - expected
-
-        # prepare message for failure
-        msg = (
-            f"{self.transient_outputs[0]}[{dataset.name}]: the expected result\n {expected}\n"
-            f" differs from the actual result\n {result} \n"
-            f" with diff \n {diff}\n"
+        # Generate metadata netCDF file
+        comparison_file = Path(self.test_dir, self.transient_outputs[0])
+        subprocess.run(
+            ["ncgen", "-k", "nc4", "-o", comparison_file, comparison_file.with_suffix(".cdl")],
+            cwd=self.test_dir,
+            check=True,
         )
 
-        npt.assert_allclose(result, expected, rtol=self.rtol, err_msg=msg)
+        # Check the output files exist
+        daily_average_file = Path(self.test_dir, self.transient_outputs[1])
+        shifted_daily_average_file = Path(self.test_dir, self.transient_outputs[2])
+
+        self.assertTrue(daily_average_file.exists())
+        self.assertTrue(shifted_daily_average_file.exists())
+        self.assertTrue(comparison_file.exists())
+
+        # Open netCDF datasets
+        daily_average_dataset = netCDF4.Dataset(daily_average_file, 'r')
+        shifted_daily_average_dataset = netCDF4.Dataset(shifted_daily_average_file, 'r')
+        expected_dataset = netCDF4.Dataset(comparison_file, 'r')
+
+        # Check variable attributes and data match the expected values
+        for variable_name in ["time_centered", "time_centered_bounds", "time_counter", "time_counter_bounds"]:
+            for dataset in [daily_average_dataset, shifted_daily_average_dataset]:
+                variable = dataset[variable_name]
+                expected_variable = expected_dataset[variable_name]
+
+                # Check attributes of the variable are equal
+                self.assertDictEqual(variable.__dict__, expected_variable.__dict__)
+
+                # Check variable data is equal
+                npt.assert_allclose(variable, expected_variable, rtol=self.rtol)
+
+        # Open daily_average netCDF variable
+        daily_average = daily_average_dataset["daily_average"]
+        shifted_daily_average = shifted_daily_average_dataset["daily_average"]
+
+        # Check attributes of the daily_average fields are equal
+        self.assertDictEqual(daily_average.__dict__, shifted_daily_average.__dict__)
+
+        # Check data of the daily_average fields are not equal
+        self.assertFalse(np.allclose(daily_average, shifted_daily_average, rtol=self.rtol))
